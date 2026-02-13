@@ -97,6 +97,7 @@ taxon <-
     datasetName = "Checklist of Bryophytes in Belgium"
   )
 ```
+
 ### Taxon-level terms
 
 The following terms contain information about the taxon:
@@ -133,175 +134,116 @@ taxon <-
     "taxonRank", "nomenclaturalCode"
   )
 ```
-
-
-
 # Distribution extension
 
-## Pre-processing
-
-Create a dataframe with all data:
-
-```{r}
-distribution <- input_data
-```
+# Create distribution extension
 
 ## Term mapping
 
-Map the data to [Species Distribution](http://rs.gbif.org/extension/gbif/1.0/distribution.xml).
-
-### taxonID
+Create a dataframe with all data (including multiple distributions). Map the data to [Species Distribution](http://rs.gbif.org/extension/gbif/1.0/distribution.xml).
 
 ```{r}
-distribution %<>% mutate(dwc_taxonID = taxon_id)
-```
-
-### locality
-
-Inspect values:
-
-```{r}
-distribution %>%
-  group_by(country_code, locality) %>%
-  count()
-```
-
-Map values to `locality` if provided, otherwise use the country name:
-
-```{r}
-distribution %<>% mutate(dwc_locality = case_when(
-  !is.na(locality) ~ locality,
-  country_code == "BE" ~ "Belgium",
-  country_code == "GB" ~ "United Kingdom",
-  country_code == "MK" ~ "Macedonia",
-  country_code == "NL" ~ "The Netherlands",
-  TRUE ~ "" # In other cases leave empty
-))
-```
-
-Inspect mapped values: 
-
-```{r}
-distribution %>%
-  group_by(country_code, locality, dwc_locality) %>%
-  count()
-```
-
-### countryCode
-
-Inspect values:
-
-```{r}
-distribution %>%
-  group_by(country_code) %>%
-  count()
-```
-
-Map values:
-
-```{r}
-distribution %<>% mutate(dwc_countryCode = country_code) 
-```
-
-### occurrenceStatus
-
-Inspect values:
-
-```{r}
-distribution %>%
-  group_by(occurrence_status) %>%
-  count()
-```
-
-Map values:
-
-```{r}
-distribution %<>% mutate(dwc_occurrenceStatus = occurrence_status) 
-```
-
-### threatStatus
-
-Inspect values:
-
-```{r}
-distribution %>%
-  group_by(threat_status) %>%
-  count()
-```
-
-Map values by recoding to the [IUCN threat status vocabulary](http://rs.gbif.org/vocabulary/iucn/threat_status.xml):
-
-```{r}
-distribution %<>% mutate(dwc_threatStatus = recode(threat_status,
-  "endangered" = "EN",
-  "vulnerable" = "VU"
-))
-```
-
-Inspect mapped values: 
-
-```{r}
-distribution %>%
-  group_by(threat_status, dwc_threatStatus) %>%
-  count()
-```
-
-### source
-
-Inspect values:
-
-```{r}
-distribution %>%
-  group_by(source) %>%
-  count() %>%
-  head() # Remove to show all values
-```
-
-Map values:
-
-```{r}
-distribution %<>% mutate(dwc_source = source) 
-```
-
-### occurrenceRemarks
-
-Inspect values:
-
-```{r}
-distribution %>%
-  group_by(remarks) %>%
-  count() %>%
-  head() # Remove to show all values
-```
-
-Map values:
-
-```{r}
-distribution %<>% mutate(dwc_occurrenceRemarks = remarks) 
+distribution <-
+  input_data |>
+  # pathway
+  pivot_longer(
+    names_to = "key", 
+    values_to = "pathway", 
+    starts_with("introduction_pathway"),
+    values_drop_na = FALSE) |>
+  filter( # keep NA value for species with no pathway provided
+    !is.na(pathway) |
+      (is.na(pathway) & key == "introduction_pathway_1")
+      ) |> 
+  # other terms
+  mutate(
+    taxonID = taxon_key,
+    locality = location,
+    countryCode = country_code,
+    occurrenceStatus = occurrence_status,
+    establishmentMeans = establishment_means,
+    degreeOfEstablishment = degree_of_establishment,
+    eventDate = case_when(
+      is.na(date_first_observation) & is.na(date_last_observation) ~ NA,
+      is.na(date_first_observation) ~ paste0("/", date_last_observation),
+      is.na(date_last_observation) ~ paste0(date_first_observation, "/"),
+      !is.na(date_first_observation) & !is.na(date_last_observation) ~ 
+        paste(date_first_observation, date_last_observation, sep = "/")
+    ),
+    source = source,
+    occurrenceRemarks = occurrence_remarks
+  )
 ```
 
 ## Post-processing
 
-Only keep the Darwin Core columns:
+Only keep the Darwin Core columns and arrange by taxonID.
 
 ```{r}
-distribution %<>% select(starts_with("dwc_"))
+distribution <-
+  distribution |>
+  select(
+    "taxonID", "locality", "countryCode", "occurrenceStatus",
+    "establishmentMeans", "degreeOfEstablishment", "pathway", "eventDate",
+    "source", "occurrenceRemarks"
+  ) |>
+  arrange(taxonID)
+```
+# Species profile extension
+
+In this extension we will express broad habitat characteristics of the species (e.g. `isTerrestrial`).
+
+Create a dataframe with unique taxa only (ignoring multiple distribution rows).
+Only keep records for which `terrestrial`, `marine` and `freshwater` is not empty.
+
+Map the data to [Species Profile](http://rs.gbif.org/extension/gbif/1.0/speciesprofile.xml).
+
+```{r}
+species_profile <-
+  input_data |>
+  distinct(taxon_key, .keep_all = TRUE) |> 
+  filter(
+    !is.na(terrestrial) |
+      !is.na(marine) |
+      !is.na(freshwater)
+  ) |> 
+  mutate(
+    .keep = "none",
+    taxonID = taxon_key,
+    isMarine = marine,
+    isFreshwater = freshwater,
+    isTerrestrial = terrestrial
+  ) |> 
+  arrange(taxonID)
 ```
 
-Drop the `dwc_` prefix:
+## Description extension
+
+In the description extension we want to include the native range of a species.
 
 ```{r}
-colnames(distribution) <- str_remove(colnames(distribution), "dwc_")
+description <-
+  input_data |> 
+  # unique taxa only (ignoring multiple distribution rows)
+  distinct(taxon_key, .keep_all = TRUE) |> 
+  # Separate values on `|` 
+  mutate(native_range = strsplit(native_range, "\\|")) |> 
+  unnest(native_range) |> 
+  filter(!is.na(native_range)) |> 
+  mutate(
+    .keep = "none",
+    taxonID = taxon_key,
+    description = str_trim(native_range),
+    type = "native range",
+    language = "en"
+    ) |> 
+  arrange(taxonID)
 ```
 
-Preview data:
+# Save to CSV:
 
 ```{r}
-distribution %>% head()
-```
-
-Save to CSV:
-
-```{r}
+write_csv(taxon, here("data", "processed", "taxon.csv"), na = "")
 write_csv(distribution, here("data", "processed", "distribution.csv"), na = "")
+write_csv(species_profile, here("data", "processed", "speciesprofile.csv"), na = "")
 ```
