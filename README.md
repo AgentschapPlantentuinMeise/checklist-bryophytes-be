@@ -1,13 +1,10 @@
-# Checklist recipe<!-- Replace this with the title of your checklist dataset -->
-
-<!-- Delete the following text -->
-> 👩🏻‍🍳 This is a template repository for **standardizing thematic species checklist data to Darwin Core using R**. As a result, the rest of the README is a template as well. To use this repository for your own checklist data, [read the recipe](https://github.com/trias-project/checklist-recipe/wiki). Happy cooking!
+# Belgium Bryophyte Checklist 
 
 ## Rationale
 
 <!-- This section gives a quick description of what this repository is for. At least update the "... the data of (blank) ..." or edit as you see fit. -->
 
-This repository contains the functionality to standardize the data of <!-- Title of checklist data or reference to source, e.g. "[Zieritz et al. (2014)](https://doi.org/10.3897/neobiota.23.5665)" --> to a [Darwin Core Archive](https://www.gbif.org/darwin-core) that can be harvested by [GBIF](https://www.gbif.org/).
+This repository contains the scripts to compile the Belgium Bryophyte Checklist and standardize it to a [Darwin Core Archive](https://www.gbif.org/darwin-core) that can be harvested by [GBIF](https://www.gbif.org/).
 
 ## Workflow
 
@@ -17,10 +14,8 @@ This repository contains the functionality to standardize the data of <!-- Title
 
 ## Published dataset
 
-<!-- This section provides links to the published dataset. Obviously, you'll only be able to add those links once you have published your dataset. 😋 -->
-
-* [Dataset on the IPT](<!-- Add the URL of the dataset on the IPT here -->)
-* [Dataset on GBIF](<!-- Add the DOI of the dataset on GBIF here -->)
+* [Dataset on the IPT](https://apm-ipt.br.fgov.be:8443/ipt/resource?r=checklist-bryophytes-be)
+* [Dataset on GBIF](https://www.gbif.org/dataset/c3781fdd-cd0d-4ac5-9d0b-ffa074bb440a)
 
 ## Repo structure
 
@@ -61,7 +56,7 @@ The repository structure is based on [Cookiecutter Data Science](http://drivenda
 
 <!-- This section lists everyone who contributed to this repository. You can maintain a manual list here or reference the contributors on GitHub. -->
 
-[List of contributors](<!-- Add the URL to the GitHub contributors of your repository here, e.g. https://github.com/trias-project/checklist-recipe/contributors -->)
+[List of contributors](https://github.com/AgentschapPlantentuinMeise/checklist-bryophytes-be/contributors)
 
 ## License
 
